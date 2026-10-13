@@ -24,7 +24,7 @@
                 </div>
                 <div>
                     <h1 class="text-sm sm:text-base font-bold text-white leading-tight">Meu Estoque</h1>
-                    <p class="text-[10px] sm:text-xs text-slate-400">Catálogo Pro</p>
+                    <p class="text-[10px] sm:text-xs text-slate-400">Catálogo Pro (Cloud)</p>
                 </div>
             </div>
             
@@ -81,7 +81,6 @@
     <div id="stepModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
         <div class="bg-slate-800 border border-slate-700 rounded-3xl max-w-sm w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
             
-            <!-- Modal Header -->
             <div class="p-4 border-b border-slate-700/80 flex items-center justify-between bg-slate-800/50">
                 <div class="flex items-center space-x-2">
                     <span id="stepBadge" class="bg-indigo-500/20 text-indigo-400 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-indigo-500/30">
@@ -94,10 +93,9 @@
                 </button>
             </div>
 
-            <!-- Modal Content Body -->
             <div class="p-4 overflow-y-auto flex-1 space-y-4">
                 
-                <!-- ETAPA 1: Visualização Detalhada -->
+                <!-- ETAPA 1 -->
                 <div id="step1Content" class="space-y-3">
                     <div class="relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-700/80 aspect-square">
                         <img id="step1Image" src="" alt="Produto" class="w-full h-full object-cover">
@@ -118,7 +116,7 @@
                     </div>
                 </div>
 
-                <!-- ETAPA 2: Seleção de Ação e Quantidade -->
+                <!-- ETAPA 2 -->
                 <div id="step2Content" class="hidden space-y-4">
                     <div class="flex items-center space-x-3 bg-slate-900/60 p-3 rounded-2xl border border-slate-700/60">
                         <img id="step2Image" src="" class="w-12 h-12 rounded-xl object-cover">
@@ -128,7 +126,6 @@
                         </div>
                     </div>
 
-                    <!-- Tipo de Operação -->
                     <div>
                         <label class="block text-xs font-semibold text-slate-300 mb-2">Operação:</label>
                         <div class="grid grid-cols-2 gap-2">
@@ -143,7 +140,6 @@
                         </div>
                     </div>
 
-                    <!-- Seletor de Quantidade -->
                     <div>
                         <label class="block text-xs font-semibold text-slate-300 mb-2">Quantidade:</label>
                         <div class="flex items-center justify-between bg-slate-900 border border-slate-700 rounded-2xl p-2">
@@ -158,7 +154,7 @@
                     </div>
                 </div>
 
-                <!-- ETAPA 3: Revisão e Confirmação -->
+                <!-- ETAPA 3 -->
                 <div id="step3Content" class="hidden space-y-4">
                     <div class="text-center py-2">
                         <div class="w-12 h-12 bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
@@ -190,7 +186,6 @@
 
             </div>
 
-            <!-- Modal Footer Controls -->
             <div class="p-4 border-t border-slate-700/80 bg-slate-800/50 flex space-x-2">
                 <button id="btnPrevStep" onclick="app.prevStep()" class="hidden bg-slate-700 hover:bg-slate-600 text-slate-200 py-2.5 px-4 rounded-xl text-xs font-semibold transition">
                     Voltar
@@ -203,7 +198,7 @@
         </div>
     </div>
 
-    <!-- MODAL ADICIONAR EM LOTE (GALERIA/ÁLBUNS) -->
+    <!-- MODAL ADICIONAR EM LOTE -->
     <div id="batchModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
         <div class="bg-slate-800 border border-slate-700 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl p-5 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-3 border-b border-slate-700 pb-3">
@@ -217,8 +212,6 @@
             </div>
 
             <form onsubmit="app.processBatchUpload(event)" class="space-y-3.5 text-xs">
-                
-                <!-- Área de upload em lote -->
                 <div>
                     <label class="block text-slate-300 font-semibold mb-1">Selecione as fotos do Álbum:</label>
                     <div class="flex flex-col items-center justify-center border-2 border-dashed border-amber-500/50 hover:border-amber-400 rounded-2xl p-4 bg-slate-900/60 transition cursor-pointer relative text-center" onclick="document.getElementById('batchFilesInput').click()">
@@ -229,20 +222,17 @@
                     </div>
                 </div>
 
-                <!-- Badge de quantidade de fotos selecionadas -->
                 <div id="batchCountBadge" class="hidden bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 p-2.5 rounded-xl flex items-center justify-between text-xs font-medium">
                     <span id="batchCountText"><i class="fa-solid fa-images mr-1"></i> 0 fotos selecionadas</span>
                     <button type="button" onclick="document.getElementById('batchFilesInput').click()" class="text-[10px] underline hover:text-white">Trocar</button>
                 </div>
 
-                <!-- Configurações Padrão do Lote -->
                 <div class="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-3 space-y-3">
                     <h4 class="font-bold text-amber-400 text-[11px] uppercase tracking-wider">Dados padrão para todas essas fotos:</h4>
                     
                     <div>
                         <label class="block text-slate-300 font-semibold mb-1">Categoria para este lote:</label>
                         <select id="batchCategorySelect" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500">
-                            <!-- Gerado dinamicamente -->
                         </select>
                     </div>
 
@@ -286,7 +276,6 @@
             <form id="productForm" onsubmit="app.saveProduct(event)" class="space-y-3 text-xs">
                 <input type="hidden" id="editProductId" value="">
 
-                <!-- Upload de Imagem Local / Galeria do Celular -->
                 <div>
                     <label class="block text-slate-300 font-semibold mb-1">Foto do Produto:</label>
                     <div class="flex flex-col items-center justify-center border-2 border-dashed border-slate-700 hover:border-indigo-500/80 rounded-2xl p-3 bg-slate-900/50 transition cursor-pointer relative" onclick="document.getElementById('imageFileInput').click()">
@@ -316,7 +305,6 @@
                     <div>
                         <label class="block text-slate-300 font-semibold mb-1">Categoria:</label>
                         <select id="prodCategorySelect" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500">
-                            <!-- Gerado dinamicamente -->
                         </select>
                     </div>
                     <div>
@@ -333,7 +321,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO -->
+    <!-- MODAL DE EXCLUSÃO -->
     <div id="deleteConfirmModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
         <div class="bg-slate-800 border border-slate-700 rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center">
             <div class="w-12 h-12 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -348,7 +336,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE GERENCIAMENTO DE CATEGORIAS -->
+    <!-- MODAL DE CATEGORIAS -->
     <div id="categoryModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
         <div class="bg-slate-800 border border-slate-700 rounded-3xl max-w-sm w-full p-5 shadow-2xl">
             <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3">
@@ -359,7 +347,6 @@
             </div>
 
             <div class="space-y-4 text-xs">
-                <!-- Adicionar Categoria -->
                 <div class="flex space-x-2">
                     <input type="text" id="newCategoryInput" placeholder="Nova Categoria (Ex: Bonés)" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
                     <button onclick="app.addCategory()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-xl font-bold transition">
@@ -367,15 +354,33 @@
                     </button>
                 </div>
 
-                <!-- Lista de Categorias Criadas -->
                 <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1" id="categoryListContainer">
-                    <!-- Gerado dinamicamente -->
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- App Logic Script -->
+    <!-- Firebase SDK Config & App Script -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB5OoAdDPPT7U386s6hrfdmmZiylKxHR3E",
+            authDomain: "estoque-4bfc5.firebaseapp.com",
+            projectId: "estoque-4bfc5",
+            storageBucket: "estoque-4bfc5.firebasestorage.app",
+            messagingSenderId: "217893716223",
+            appId: "1:217893716223:web:984cc7717b9b9e9b928cca",
+            measurementId: "G-TZMD2JXXM8"
+        };
+
+        const appFB = initializeApp(firebaseConfig);
+        window.db = getFirestore(appFB);
+        window.storage = getStorage(appFB);
+        window.fbMethods = { collection, getDocs, doc, setDoc, deleteDoc, ref, uploadBytes, getDownloadURL };
+    </script>
     <script src="app.js"></script>
 </body>
 </html>

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo e Controle de Estoque</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen pb-12">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 sm:px-6">
+        <div class="max-w-md sm:max-w-xl md:max-w-4xl mx-auto flex items-center justify-between gap-2">
+            <div class="flex items-center space-x-2">
+                <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-boxes-stacked text-base"></i>
+                </div>
+                <div>
+                    <h1 class="text-sm sm:text-base font-bold text-white leading-tight">Meu Estoque</h1>
+                    <p class="text-[10px] sm:text-xs text-slate-400">Catálogo Pro</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-1.5 sm:space-x-2">
+                <!-- Importar em Lote -->
+                <button onclick="app.openBatchModal()" class="bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 px-2.5 py-2 sm:px-3 rounded-xl text-xs font-semibold transition flex items-center gap-1.5" title="Importar Várias Fotos de uma Vez">
+                    <i class="fa-solid fa-images text-amber-400"></i>
+                    <span class="hidden sm:inline">Importar em Lote</span>
+                </button>
+                <!-- Gerenciar Categorias -->
+                <button onclick="app.openCategoryListModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5" title="Gerenciar Categorias">
+                    <i class="fa-solid fa-tags text-indigo-400"></i>
+                    <span class="hidden sm:inline">Categorias</span>
+                </button>
+                <!-- Novo Produto -->
+                <button onclick="app.openAddProductModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-xl text-xs font-semibold transition shadow-md shadow-indigo-600/20 flex items-center gap-1.5">
+                    <i class="fa-solid fa-plus text-xs"></i>
+                    <span>Novo</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-md sm:max-w-xl md:max-w-4xl mx-auto px-4 pt-4">
+        
+        <!-- Campo de Pesquisa -->
+        <div class="relative mb-4">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+            <input type="text" id="searchInput" oninput="app.handleSearch(this.value)" placeholder="Buscar por produto ou código..." class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 placeholder-slate-400 rounded-2xl pl-10 pr-4 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+        </div>
+
+        <!-- Navegação por Categorias -->
+        <div class="flex items-center space-x-2 overflow-x-auto no-scrollbar mb-5 pb-1" id="categoryTabs">
+            <!-- Gerado dinamicamente no JS -->
+        </div>
+
+        <!-- Grade do Catálogo (2 colunas no celular) -->
+        <div id="catalogGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+            <!-- Gerado via JS -->
+        </div>
+
+        <!-- Mensagem de catálogo vazio -->
+        <div id="emptyCatalogMessage" class="hidden py-16 text-center">
+            <div class="w-16 h-16 bg-slate-800 text-slate-500 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
+                <i class="fa-solid fa-box-open"></i>
+            </div>
+            <h3 class="text-sm font-semibold text-slate-300 mb-1">Nenhum produto encontrado</h3>
+            <p class="text-xs text-slate-500">Tente buscar por outro termo ou cadastre novos itens em lote.</p>
+        </div>
+
+    </main>
+
+    <!-- MODAL 3 ETAPAS DE BAIXA/ESTOQUE -->
+    <div id="stepModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-3xl max-w-sm w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            
+            <!-- Modal Header -->
+            <div class="p-4 border-b border-slate-700/80 flex items-center justify-between bg-slate-800/50">
+                <div class="flex items-center space-x-2">
+                    <span id="stepBadge" class="bg-indigo-500/20 text-indigo-400 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-indigo-500/30">
+                        Etapa 1 de 3
+                    </span>
+                    <h2 id="modalStepTitle" class="text-xs font-bold text-slate-200 uppercase tracking-wider">Detalhes</h2>
+                </div>
+                <button onclick="app.closeStepModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content Body -->
+            <div class="p-4 overflow-y-auto flex-1 space-y-4">
+                
+                <!-- ETAPA 1: Visualização Detalhada -->
+                <div id="step1Content" class="space-y-3">
+                    <div class="relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-700/80 aspect-square">
+                        <img id="step1Image" src="" alt="Produto" class="w-full h-full object-cover">
+                        <div class="absolute top-2 right-2 bg-slate-900/80 backdrop-blur-md border border-slate-700 px-2.5 py-1 rounded-xl text-xs font-bold text-indigo-400" id="step1Price">
+                            R$ 0,00
+                        </div>
+                    </div>
+
+                    <div>
+                        <span id="step1Category" class="text-[10px] uppercase font-bold tracking-wider text-slate-400 bg-slate-700/50 px-2 py-0.5 rounded-md">Categoria</span>
+                        <h3 id="step1Name" class="text-base font-bold text-white mt-1">Nome do Produto</h3>
+                        <p id="step1Code" class="text-xs text-slate-400">Cód: #000</p>
+                    </div>
+
+                    <div class="bg-slate-900/60 border border-slate-700/60 p-3 rounded-2xl flex items-center justify-between">
+                        <span class="text-xs font-medium text-slate-300">Estoque Atual:</span>
+                        <span id="step1Stock" class="text-sm font-bold text-emerald-400">0 unidades</span>
+                    </div>
+                </div>
+
+                <!-- ETAPA 2: Seleção de Ação e Quantidade -->
+                <div id="step2Content" class="hidden space-y-4">
+                    <div class="flex items-center space-x-3 bg-slate-900/60 p-3 rounded-2xl border border-slate-700/60">
+                        <img id="step2Image" src="" class="w-12 h-12 rounded-xl object-cover">
+                        <div class="overflow-hidden">
+                            <h4 id="step2Name" class="text-xs font-bold text-white truncate">Produto</h4>
+                            <p class="text-[11px] text-slate-400">Ajuste de Saldo</p>
+                        </div>
+                    </div>
+
+                    <!-- Tipo de Operação -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-2">Operação:</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" onclick="app.setActionType('baixa')" id="btnActionBaixa" class="py-2.5 rounded-xl border text-xs font-bold transition flex items-center justify-center space-x-1.5 bg-rose-500/20 text-rose-300 border-rose-500/40">
+                                <i class="fa-solid fa-minus"></i>
+                                <span>Dar Baixa</span>
+                            </button>
+                            <button type="button" onclick="app.setActionType('entrada')" id="btnActionEntrada" class="py-2.5 rounded-xl border text-xs font-bold transition flex items-center justify-center space-x-1.5 bg-slate-700/50 text-slate-400 border-slate-600">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>Entrada</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Seletor de Quantidade -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-2">Quantidade:</label>
+                        <div class="flex items-center justify-between bg-slate-900 border border-slate-700 rounded-2xl p-2">
+                            <button onclick="app.adjustQuantity(-1)" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center active:scale-95 transition">
+                                <i class="fa-solid fa-minus text-xs"></i>
+                            </button>
+                            <span id="selectedQtyDisplay" class="text-lg font-bold text-white">1</span>
+                            <button onclick="app.adjustQuantity(1)" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center active:scale-95 transition">
+                                <i class="fa-solid fa-plus text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ETAPA 3: Revisão e Confirmação -->
+                <div id="step3Content" class="hidden space-y-4">
+                    <div class="text-center py-2">
+                        <div class="w-12 h-12 bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <i class="fa-solid fa-clipboard-check text-lg"></i>
+                        </div>
+                        <h4 class="text-sm font-bold text-white">Confirmar Operação</h4>
+                        <p class="text-xs text-slate-400">Verifique os dados antes de finalizar</p>
+                    </div>
+
+                    <div class="bg-slate-900/80 border border-slate-700/80 rounded-2xl p-3.5 space-y-2 text-xs">
+                        <div class="flex justify-between text-slate-300">
+                            <span>Produto:</span>
+                            <span id="summaryName" class="font-bold text-white truncate max-w-[150px]">---</span>
+                        </div>
+                        <div class="flex justify-between text-slate-300">
+                            <span>Ação:</span>
+                            <span id="summaryAction" class="font-bold">---</span>
+                        </div>
+                        <div class="flex justify-between text-slate-300">
+                            <span>Quantidade:</span>
+                            <span id="summaryQty" class="font-bold text-white">0</span>
+                        </div>
+                        <div class="border-t border-slate-700/80 pt-2 flex justify-between font-bold">
+                            <span class="text-slate-300">Novo Estoque:</span>
+                            <span id="summaryNewStock" class="text-indigo-400">0</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer Controls -->
+            <div class="p-4 border-t border-slate-700/80 bg-slate-800/50 flex space-x-2">
+                <button id="btnPrevStep" onclick="app.prevStep()" class="hidden bg-slate-700 hover:bg-slate-600 text-slate-200 py-2.5 px-4 rounded-xl text-xs font-semibold transition">
+                    Voltar
+                </button>
+                <button id="btnNextStep" onclick="app.nextStep()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 px-4 rounded-xl text-xs font-semibold transition shadow-md shadow-indigo-600/20">
+                    Avançar (Etapa 2)
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MODAL ADICIONAR EM LOTE (GALERIA/ÁLBUNS) -->
+    <div id="batchModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl p-5 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-3 border-b border-slate-700 pb-3">
+                <div>
+                    <h3 class="text-sm font-bold text-white">Adicionar Vários em Lote</h3>
+                    <p class="text-[11px] text-slate-400">Selecione as fotos do seu álbum na galeria</p>
+                </div>
+                <button onclick="app.closeBatchModal()" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form onsubmit="app.processBatchUpload(event)" class="space-y-3.5 text-xs">
+                
+                <!-- Área de upload em lote -->
+                <div>
+                    <label class="block text-slate-300 font-semibold mb-1">Selecione as fotos do Álbum:</label>
+                    <div class="flex flex-col items-center justify-center border-2 border-dashed border-amber-500/50 hover:border-amber-400 rounded-2xl p-4 bg-slate-900/60 transition cursor-pointer relative text-center" onclick="document.getElementById('batchFilesInput').click()">
+                        <i class="fa-solid fa-folder-plus text-2xl text-amber-400 mb-1"></i>
+                        <p class="text-xs font-bold text-slate-200">Clique para escolher fotos do celular</p>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Você pode selecionar dezenas de fotos de uma vez</p>
+                        <input type="file" id="batchFilesInput" accept="image/*" multiple class="hidden" onchange="app.handleBatchSelect(event)">
+                    </div>
+                </div>
+
+                <!-- Badge de quantidade de fotos selecionadas -->
+                <div id="batchCountBadge" class="hidden bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 p-2.5 rounded-xl flex items-center justify-between text-xs font-medium">
+                    <span id="batchCountText"><i class="fa-solid fa-images mr-1"></i> 0 fotos selecionadas</span>
+                    <button type="button" onclick="document.getElementById('batchFilesInput').click()" class="text-[10px] underline hover:text-white">Trocar</button>
+                </div>
+
+                <!-- Configurações Padrão do Lote -->
+                <div class="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-3 space-y-3">
+                    <h4 class="font-bold text-amber-400 text-[11px] uppercase tracking-wider">Dados padrão para todas essas fotos:</h4>
+                    
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Categoria para este lote:</label>
+                        <select id="batchCategorySelect" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500">
+                            <!-- Gerado dinamicamente -->
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-slate-300 font-semibold mb-1">Prefixo do Nome:</label>
+                            <input type="text" id="batchNamePrefix" placeholder="Ex: Item" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-slate-300 font-semibold mb-1">Preço Padronizado (R$):</label>
+                            <input type="number" step="0.01" id="batchPrice" required placeholder="89.90" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Estoque Inicial por Item:</label>
+                        <input type="number" id="batchStock" required min="1" value="1" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <div class="pt-2 flex justify-end space-x-2">
+                    <button type="button" onclick="app.closeBatchModal()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2.5 rounded-xl text-xs font-medium transition">Cancelar</button>
+                    <button type="submit" id="btnSubmitBatch" class="bg-amber-600 hover:bg-amber-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition shadow-lg shadow-amber-600/20">
+                        Importar Lote
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE ADICIONAR / EDITAR PRODUTO -->
+    <div id="addProductModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-3xl max-w-sm w-full overflow-hidden shadow-2xl p-5 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3">
+                <h3 id="productModalTitle" class="text-sm font-bold text-white">Cadastrar Novo Produto</h3>
+                <button onclick="app.closeAddModal()" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="productForm" onsubmit="app.saveProduct(event)" class="space-y-3 text-xs">
+                <input type="hidden" id="editProductId" value="">
+
+                <!-- Upload de Imagem Local / Galeria do Celular -->
+                <div>
+                    <label class="block text-slate-300 font-semibold mb-1">Foto do Produto:</label>
+                    <div class="flex flex-col items-center justify-center border-2 border-dashed border-slate-700 hover:border-indigo-500/80 rounded-2xl p-3 bg-slate-900/50 transition cursor-pointer relative" onclick="document.getElementById('imageFileInput').click()">
+                        <img id="imagePreview" src="https://placehold.co/400x400/1e293b/94a3b8?text=Clique+p/+foto" class="w-24 h-24 object-cover rounded-xl mb-2 border border-slate-700">
+                        <p class="text-[11px] text-indigo-400 font-medium">Abrir galeria de fotos</p>
+                        <input type="file" id="imageFileInput" accept="image/*" class="hidden" onchange="app.handleImageUpload(event)">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-slate-300 font-semibold mb-1">Nome do Produto:</label>
+                    <input type="text" id="prodName" required placeholder="Ex: Camisa Polo Slim" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Código / Ref:</label>
+                        <input type="text" id="prodCode" required placeholder="Ex: CAM-001" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Preço (R$):</label>
+                        <input type="number" step="0.01" id="prodPrice" required placeholder="89.90" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Categoria:</label>
+                        <select id="prodCategorySelect" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500">
+                            <!-- Gerado dinamicamente -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Estoque Inicial:</label>
+                        <input type="number" id="prodStock" required min="0" placeholder="10" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <div class="pt-3 flex justify-end space-x-3">
+                    <button type="button" onclick="app.closeAddModal()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2.5 rounded-xl text-xs font-medium transition">Cancelar</button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl text-xs font-medium transition shadow">Salvar Produto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO -->
+    <div id="deleteConfirmModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center">
+            <div class="w-12 h-12 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+            </div>
+            <h3 class="text-base font-bold text-white mb-1">Excluir Produto?</h3>
+            <p id="deleteConfirmText" class="text-xs text-slate-400 mb-6">Tem certeza que deseja apagar este item? Esta ação não poderá ser desfeita.</p>
+            <div class="flex space-x-3">
+                <button onclick="app.closeDeleteModal()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 py-2.5 rounded-xl text-xs font-semibold transition">Cancelar</button>
+                <button onclick="app.confirmDeleteProduct()" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white py-2.5 rounded-xl text-xs font-semibold transition shadow">Excluir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE GERENCIAMENTO DE CATEGORIAS -->
+    <div id="categoryModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-3xl max-w-sm w-full p-5 shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3">
+                <h3 class="text-sm font-bold text-white">Gerenciar Categorias</h3>
+                <button onclick="app.closeCategoryModal()" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4 text-xs">
+                <!-- Adicionar Categoria -->
+                <div class="flex space-x-2">
+                    <input type="text" id="newCategoryInput" placeholder="Nova Categoria (Ex: Bonés)" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                    <button onclick="app.addCategory()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-xl font-bold transition">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+
+                <!-- Lista de Categorias Criadas -->
+                <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1" id="categoryListContainer">
+                    <!-- Gerado dinamicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

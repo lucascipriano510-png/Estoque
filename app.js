@@ -1,67 +1,89 @@
 class StockApp {
     constructor() {
-        // Categorias Padrão
-        this.categories = JSON.parse(localStorage.getItem('stock_categories_v2')) || [
-            'Camisas G', 'Camisas M', 'Calças 38', 'Bonés', 'Óculos'
-        ];
-
-        // Produtos de Exemplo Iniciais
-        this.products = JSON.parse(localStorage.getItem('stock_products_v2')) || [
-            {
-                id: 1,
-                name: 'Camisa Oversized Black',
-                code: 'CAM-001',
-                price: 99.90,
-                category: 'Camisas G',
-                stock: 14,
-                image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&auto=format&fit=crop&q=80'
-            },
-            {
-                id: 2,
-                name: 'Calça Jeans Slim 38',
-                code: 'CAL-003',
-                price: 159.90,
-                category: 'Calças 38',
-                stock: 2,
-                image: 'https://images.unsplash.com/photo-1542272604-780c36856842?w=500&auto=format&fit=crop&q=80'
-            }
-        ];
+        this.categories = ['Camisas G', 'Camisas M', 'Calças 38', 'Bonés', 'Óculos'];
+        this.products = [];
 
         this.currentCategory = 'todos';
         this.searchTerm = '';
         
-        // Estado do App
         this.currentStep = 1;
         this.activeProduct = null;
         this.productToDeleteId = null;
         this.selectedQuantity = 1;
         this.actionType = 'baixa';
-        this.tempImageBase64 = null;
+        this.tempImageFile = null; // Guarda o arquivo binário para upload no Firebase Storage
 
-        // Lote
         this.batchFiles = [];
 
         this.init();
     }
 
-    init() {
+    async init() {
+        await this.loadFromFirebase();
         this.renderCategories();
         this.renderCatalog();
     }
 
-    saveToStorage() {
+    // Carregar dados do Firebase Firestore
+    async loadFromFirebase() {
         try {
-            localStorage.setItem('stock_products_v2', JSON.stringify(this.products));
+            if (!window.db) return;
+            const { collection, getDocs } = window.fbMethods;
+            
+            // Buscar Produtos
+            const prodSnapshot = await getDocs(collection(window.db, 'products'));
+            if (!prodSnapshot.empty) {
+                this.products = prodSnapshot.docs.map(doc => doc.data());
+            }
+
+            // Buscar Categorias
+            const catSnapshot = await getDocs(collection(window.db, 'categories'));
+            if (!catSnapshot.empty) {
+                this.categories = catSnapshot.docs.map(doc => doc.data().name);
+            }
         } catch (e) {
-            alert('Aviso: Armazenamento local cheio! Reduza o número de fotos para não exceder o limite do navegador.');
+            console.error("Erro ao carregar do Firebase:", e);
         }
     }
 
-    saveCategoriesToStorage() {
-        localStorage.setItem('stock_categories_v2', JSON.stringify(this.categories));
+    // Salvar alteração de produto no Firestore
+    async saveProductToDB(product) {
+        try {
+            const { doc, setDoc } = window.fbMethods;
+            await setDoc(doc(window.db, 'products', String(product.id)), product);
+        } catch (e) {
+            console.error('Erro ao salvar produto no Firestore:', e);
+            alert('Erro ao sincronizar com a base de dados.');
+        }
     }
 
-    // Categorias
+    // Salvar categorias no Firestore
+    async saveCategoriesToDB() {
+        try {
+            const { doc, setDoc } = window.fbMethods;
+            for (let cat of this.categories) {
+                await setDoc(doc(window.db, 'categories', cat), { name: cat });
+            }
+        } catch (e) {
+            console.error('Erro ao salvar categorias:', e);
+        }
+    }
+
+    // Upload de imagem diretamente para o Firebase Storage
+    async uploadImageToStorage(file, productId) {
+        if (!file || typeof file === 'string') return file; // Se já for URL, retorna
+        try {
+            const { ref, uploadBytes, getDownloadURL } = window.fbMethods;
+            const imageRef = ref(window.storage, `products/${productId}_${Date.now()}.jpg`);
+            await uploadBytes(imageRef, file);
+            return await getDownloadURL(imageRef);
+        } catch (e) {
+            console.error("Erro no upload da imagem:", e);
+            return 'https://placehold.co/400x400/1e293b/94a3b8?text=Erro+Upload';
+        }
+    }
+
+    // Categorias UI
     renderCategories() {
         const container = document.getElementById('categoryTabs');
         let html = `
@@ -101,7 +123,7 @@ class StockApp {
         this.renderCatalog();
     }
 
-    // Renderizar Grade do Catálogo (2 Colunas no Celular)
+    // Renderizar Grade do Catálogo
     renderCatalog() {
         const grid = document.getElementById('catalogGrid');
         const emptyMsg = document.getElementById('emptyCatalogMessage');
@@ -137,12 +159,10 @@ class StockApp {
                         </div>
                     </div>
 
-                    <!-- Botão rápido de trocar foto/editar -->
                     <button onclick="app.openEditProductModal(${p.id})" title="Alterar foto ou dados" class="absolute top-2.5 left-2.5 bg-slate-900/80 hover:bg-slate-900 text-slate-300 hover:text-indigo-400 p-2 rounded-xl backdrop-blur-md border border-slate-700 transition z-10">
                         <i class="fa-solid fa-pen-to-square text-xs"></i>
                     </button>
 
-                    <!-- Botão de Excluir Produto -->
                     <button onclick="app.deleteProduct(event, ${p.id})" title="Excluir produto" class="absolute top-2.5 right-2.5 bg-slate-900/80 hover:bg-slate-900 text-slate-300 hover:text-rose-400 p-2 rounded-xl backdrop-blur-md border border-slate-700 transition z-10">
                         <i class="fa-solid fa-trash-can text-xs"></i>
                     </button>
@@ -162,7 +182,7 @@ class StockApp {
         }).join('');
     }
 
-    // IMPORTAÇÃO EM LOTE (ÁLBUNS/MÚLTIPLAS FOTOS)
+    // IMPORTAÇÃO EM LOTE
     openBatchModal() {
         this.batchFiles = [];
         document.getElementById('batchCountBadge').classList.add('hidden');
@@ -195,41 +215,10 @@ class StockApp {
         }
     }
 
-    // Redimensiona imagens de fotos do celular para não travar o navegador
-    compressImage(file, maxWidth = 600) {
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > maxWidth) {
-                        height = Math.round((height * maxWidth) / width);
-                        width = maxWidth;
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-                    
-                    resolve(canvas.toDataURL('image/jpeg', 0.7));
-                };
-                img.onerror = () => resolve('https://placehold.co/400x400/1e293b/94a3b8?text=Erro+Foto');
-                img.src = e.target.result;
-            };
-            reader.onerror = () => resolve('https://placehold.co/400x400/1e293b/94a3b8?text=Erro+Foto');
-            reader.readAsDataURL(file);
-        });
-    }
-
     async processBatchUpload(e) {
         e.preventDefault();
         if (this.batchFiles.length === 0) {
-            alert('Por favor, selecione pelo menos uma foto da sua galeria.');
+            alert('Por favor, selecione pelo menos uma foto.');
             return;
         }
 
@@ -245,26 +234,28 @@ class StockApp {
         const total = this.batchFiles.length;
 
         for (let i = 0; i < total; i++) {
-            btn.innerText = `Processando ${i + 1} de ${total}...`;
+            btn.innerText = `Enviando ${i + 1} de ${total}...`;
             const file = this.batchFiles[i];
+            const uniqueId = Date.now() + i;
             
-            const base64 = await this.compressImage(file, 600);
+            // Envia para o Storage do Firebase
+            const imageUrl = await this.uploadImageToStorage(file, uniqueId);
             
             const randomRef = Math.floor(1000 + Math.random() * 9000);
             const newProd = {
-                id: Date.now() + i,
+                id: uniqueId,
                 name: `${prefix} #${i + 1}`,
                 code: `REF-${randomRef}`,
                 price: price,
                 category: category,
                 stock: stock,
-                image: base64
+                image: imageUrl
             };
 
             this.products.unshift(newProd);
+            await this.saveProductToDB(newProd);
         }
 
-        this.saveToStorage();
         this.renderCatalog();
         this.closeBatchModal();
 
@@ -293,11 +284,16 @@ class StockApp {
         modal.classList.add('hidden');
     }
 
-    confirmDeleteProduct() {
+    async confirmDeleteProduct() {
         if (!this.productToDeleteId) return;
-        this.products = this.products.filter(p => p.id !== this.productToDeleteId);
-        this.saveToStorage();
-        this.renderCatalog();
+        try {
+            const { doc, deleteDoc } = window.fbMethods;
+            await deleteDoc(doc(window.db, 'products', String(this.productToDeleteId)));
+            this.products = this.products.filter(p => p.id !== this.productToDeleteId);
+            this.renderCatalog();
+        } catch (e) {
+            console.error("Erro ao excluir do Firebase:", e);
+        }
         this.closeDeleteModal();
     }
 
@@ -311,7 +307,6 @@ class StockApp {
         this.actionType = 'baixa';
         this.setActionType('baixa');
 
-        // Preencher Etapa 1
         document.getElementById('step1Image').src = this.activeProduct.image;
         document.getElementById('step1Name').innerText = this.activeProduct.name;
         document.getElementById('step1Code').innerText = `Cód: #${this.activeProduct.code}`;
@@ -350,11 +345,9 @@ class StockApp {
     updateStepUI() {
         const badge = document.getElementById('stepBadge');
         const title = document.getElementById('modalStepTitle');
-
         const content1 = document.getElementById('step1Content');
         const content2 = document.getElementById('step2Content');
         const content3 = document.getElementById('step3Content');
-
         const btnPrev = document.getElementById('btnPrevStep');
         const btnNext = document.getElementById('btnNextStep');
 
@@ -366,18 +359,15 @@ class StockApp {
             badge.innerText = "Etapa 1 de 3";
             title.innerText = "Detalhes do Produto";
             content1.classList.remove('hidden');
-
             btnPrev.classList.add('hidden');
             btnNext.innerText = "Avançar para Ajuste (Etapa 2)";
         } else if (this.currentStep === 2) {
             badge.innerText = "Etapa 2 de 3";
             title.innerText = "Quantidade e Operação";
             content2.classList.remove('hidden');
-
             document.getElementById('step2Image').src = this.activeProduct.image;
             document.getElementById('step2Name').innerText = this.activeProduct.name;
             document.getElementById('selectedQtyDisplay').innerText = this.selectedQuantity;
-
             btnPrev.classList.remove('hidden');
             btnNext.innerText = "Ir para Resumo (Etapa 3)";
         } else if (this.currentStep === 3) {
@@ -401,12 +391,11 @@ class StockApp {
         }
     }
 
-    nextStep() {
+    async nextStep() {
         if (this.currentStep < 3) {
             this.currentStep++;
             this.updateStepUI();
         } else {
-            // Finalizar Operação Corretamente
             const isBaixa = this.actionType === 'baixa';
             if (isBaixa) {
                 this.activeProduct.stock = Math.max(0, this.activeProduct.stock - this.selectedQuantity);
@@ -414,7 +403,7 @@ class StockApp {
                 this.activeProduct.stock += this.selectedQuantity;
             }
 
-            this.saveToStorage();
+            await this.saveProductToDB(this.activeProduct);
             this.renderCatalog();
             this.closeStepModal();
         }
@@ -433,12 +422,12 @@ class StockApp {
         modal.classList.add('hidden');
     }
 
-    // ADICIONAR / EDITAR PRODUTO INDIVIDUAL
+    // ADICIONAR / EDITAR PRODUTO
     openAddProductModal() {
         document.getElementById('editProductId').value = '';
         document.getElementById('productModalTitle').innerText = 'Cadastrar Novo Produto';
         document.getElementById('productForm').reset();
-        this.tempImageBase64 = null;
+        this.tempImageFile = null;
         document.getElementById('imagePreview').src = 'https://placehold.co/400x400/1e293b/94a3b8?text=Clique+p/+foto';
         
         this.populateCategorySelect('prodCategorySelect');
@@ -458,7 +447,7 @@ class StockApp {
         document.getElementById('prodPrice').value = prod.price;
         document.getElementById('prodStock').value = prod.stock;
 
-        this.tempImageBase64 = prod.image;
+        this.tempImageFile = prod.image; // mantém a URL atual se não trocar
         document.getElementById('imagePreview').src = prod.image;
 
         this.populateCategorySelect('prodCategorySelect', prod.category);
@@ -482,15 +471,19 @@ class StockApp {
         modal.classList.add('hidden');
     }
 
-    async handleImageUpload(event) {
+    handleImageUpload(event) {
         const file = event.target.files[0];
         if (file) {
-            this.tempImageBase64 = await this.compressImage(file, 600);
-            document.getElementById('imagePreview').src = this.tempImageBase64;
+            this.tempImageFile = file; // Salva o arquivo para enviar ao Storage ao salvar
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('imagePreview').src = e.target.result;
+            };
+            reader.readAsDataURL(file);
         }
     }
 
-    saveProduct(e) {
+    async saveProduct(e) {
         e.preventDefault();
         const editId = document.getElementById('editProductId').value;
         const name = document.getElementById('prodName').value;
@@ -499,25 +492,30 @@ class StockApp {
         const category = document.getElementById('prodCategorySelect').value;
         const stock = parseInt(document.getElementById('prodStock').value);
         
-        const image = this.tempImageBase64 || 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=500&auto=format&fit=crop&q=80';
+        let productId = editId ? parseInt(editId) : Date.now();
+        
+        // Faz upload da nova imagem para o Storage se houver um arquivo novo
+        let imageUrl = typeof this.tempImageFile === 'string' ? this.tempImageFile : await this.uploadImageToStorage(this.tempImageFile, productId);
+        if (!imageUrl) imageUrl = 'https://placehold.co/400x400/1e293b/94a3b8?text=Sem+Foto';
 
         if (editId) {
-            const index = this.products.findIndex(p => p.id === parseInt(editId));
+            const index = this.products.findIndex(p => p.id === productId);
             if (index !== -1) {
                 this.products[index] = {
                     ...this.products[index],
-                    name, code, price, category, stock, image
+                    name, code, price, category, stock, image: imageUrl
                 };
+                await this.saveProductToDB(this.products[index]);
             }
         } else {
             const newProd = {
-                id: Date.now(),
-                name, code, price, category, stock, image
+                id: productId,
+                name, code, price, category, stock, image: imageUrl
             };
             this.products.unshift(newProd);
+            await this.saveProductToDB(newProd);
         }
 
-        this.saveToStorage();
         this.renderCatalog();
         this.closeAddModal();
     }
@@ -548,22 +546,29 @@ class StockApp {
         `).join('');
     }
 
-    addCategory() {
+    async addCategory() {
         const input = document.getElementById('newCategoryInput');
         const val = input.value.trim();
         if (val && !this.categories.includes(val)) {
             this.categories.push(val);
             input.value = '';
-            this.saveCategoriesToStorage();
+            await this.saveCategoriesToDB();
             this.renderCategories();
             this.renderCategoriesListModal();
         }
     }
 
-    deleteCategory(cat) {
+    async deleteCategory(cat) {
         this.categories = this.categories.filter(c => c !== cat);
         if (this.currentCategory === cat) this.currentCategory = 'todos';
-        this.saveCategoriesToStorage();
+        
+        try {
+            const { doc, deleteDoc } = window.fbMethods;
+            await deleteDoc(doc(window.db, 'categories', cat));
+        } catch (e) {
+            console.error("Erro ao apagar categoria do Firebase:", e);
+        }
+
         this.renderCategories();
         this.renderCategoriesListModal();
         this.renderCatalog();

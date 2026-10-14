@@ -11,7 +11,7 @@ class StockApp {
         this.productToDeleteId = null;
         this.selectedQuantity = 1;
         this.actionType = 'baixa';
-        this.tempImageFile = null; // Guarda o arquivo binário para upload no Firebase Storage
+        this.tempImageFile = null;
 
         this.batchFiles = [];
 
@@ -49,17 +49,18 @@ class StockApp {
     // Salvar alteração de produto no Firestore
     async saveProductToDB(product) {
         try {
+            if (!window.db) return;
             const { doc, setDoc } = window.fbMethods;
             await setDoc(doc(window.db, 'products', String(product.id)), product);
         } catch (e) {
             console.error('Erro ao salvar produto no Firestore:', e);
-            alert('Erro ao sincronizar com a base de dados.');
         }
     }
 
     // Salvar categorias no Firestore
     async saveCategoriesToDB() {
         try {
+            if (!window.db) return;
             const { doc, setDoc } = window.fbMethods;
             for (let cat of this.categories) {
                 await setDoc(doc(window.db, 'categories', cat), { name: cat });
@@ -69,23 +70,26 @@ class StockApp {
         }
     }
 
-    // Upload de imagem diretamente para o Firebase Storage
+    // Upload de imagem diretamente para o Firebase Storage com fallback seguro
     async uploadImageToStorage(file, productId) {
-        if (!file || typeof file === 'string') return file; // Se já for URL, retorna
+        if (!file || typeof file === 'string') return file;
         try {
+            if (!window.storage) return document.getElementById('imagePreview').src;
             const { ref, uploadBytes, getDownloadURL } = window.fbMethods;
             const imageRef = ref(window.storage, `products/${productId}_${Date.now()}.jpg`);
             await uploadBytes(imageRef, file);
             return await getDownloadURL(imageRef);
         } catch (e) {
-            console.error("Erro no upload da imagem:", e);
-            return 'https://placehold.co/400x400/1e293b/94a3b8?text=Erro+Upload';
+            console.warn("Aviso no upload do Storage, usando pré-visualização:", e);
+            return document.getElementById('imagePreview').src;
         }
     }
 
     // Categorias UI
     renderCategories() {
         const container = document.getElementById('categoryTabs');
+        if (!container) return;
+        
         let html = `
             <button onclick="app.setCategory('todos')" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${
                 this.currentCategory === 'todos' 
@@ -127,6 +131,7 @@ class StockApp {
     renderCatalog() {
         const grid = document.getElementById('catalogGrid');
         const emptyMsg = document.getElementById('emptyCatalogMessage');
+        if (!grid) return;
 
         const filtered = this.products.filter(p => {
             const matchesCategory = this.currentCategory === 'todos' || p.category === this.currentCategory;
@@ -136,11 +141,11 @@ class StockApp {
 
         if (filtered.length === 0) {
             grid.innerHTML = '';
-            emptyMsg.classList.remove('hidden');
+            if (emptyMsg) emptyMsg.classList.remove('hidden');
             return;
         }
 
-        emptyMsg.classList.add('hidden');
+        if (emptyMsg) emptyMsg.classList.add('hidden');
 
         grid.innerHTML = filtered.map(p => {
             let stockBadgeColor = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
@@ -185,7 +190,8 @@ class StockApp {
     // IMPORTAÇÃO EM LOTE
     openBatchModal() {
         this.batchFiles = [];
-        document.getElementById('batchCountBadge').classList.add('hidden');
+        const badge = document.getElementById('batchCountBadge');
+        if (badge) badge.classList.add('hidden');
         document.getElementById('batchNamePrefix').value = '';
         document.getElementById('batchPrice').value = '';
         document.getElementById('batchStock').value = '1';
@@ -229,16 +235,15 @@ class StockApp {
         const stock = parseInt(document.getElementById('batchStock').value) || 1;
 
         const btn = document.getElementById('btnSubmitBatch');
-        btn.disabled = true;
+        if (btn) btn.disabled = true;
 
         const total = this.batchFiles.length;
 
         for (let i = 0; i < total; i++) {
-            btn.innerText = `Enviando ${i + 1} de ${total}...`;
+            if (btn) btn.innerText = `Enviando ${i + 1} de ${total}...`;
             const file = this.batchFiles[i];
             const uniqueId = Date.now() + i;
             
-            // Envia para o Storage do Firebase
             const imageUrl = await this.uploadImageToStorage(file, uniqueId);
             
             const randomRef = Math.floor(1000 + Math.random() * 9000);
@@ -259,8 +264,10 @@ class StockApp {
         this.renderCatalog();
         this.closeBatchModal();
 
-        btn.disabled = false;
-        btn.innerText = "Importar Lote";
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = "Importar Lote";
+        }
     }
 
     // Excluir produto
@@ -287,8 +294,10 @@ class StockApp {
     async confirmDeleteProduct() {
         if (!this.productToDeleteId) return;
         try {
-            const { doc, deleteDoc } = window.fbMethods;
-            await deleteDoc(doc(window.db, 'products', String(this.productToDeleteId)));
+            if (window.db) {
+                const { doc, deleteDoc } = window.fbMethods;
+                await deleteDoc(doc(window.db, 'products', String(this.productToDeleteId)));
+            }
             this.products = this.products.filter(p => p.id !== this.productToDeleteId);
             this.renderCatalog();
         } catch (e) {
@@ -324,6 +333,7 @@ class StockApp {
         this.actionType = type;
         const btnBaixa = document.getElementById('btnActionBaixa');
         const btnEntrada = document.getElementById('btnActionEntrada');
+        if (!btnBaixa || !btnEntrada) return;
 
         if (type === 'baixa') {
             btnBaixa.className = "py-2.5 rounded-xl border text-xs font-bold transition flex items-center justify-center space-x-1.5 bg-rose-500/20 text-rose-300 border-rose-500/40";
@@ -338,7 +348,8 @@ class StockApp {
         const newQty = this.selectedQuantity + delta;
         if (newQty >= 1) {
             this.selectedQuantity = newQty;
-            document.getElementById('selectedQtyDisplay').innerText = this.selectedQuantity;
+            const display = document.getElementById('selectedQtyDisplay');
+            if (display) display.innerText = this.selectedQuantity;
         }
     }
 
@@ -351,28 +362,33 @@ class StockApp {
         const btnPrev = document.getElementById('btnPrevStep');
         const btnNext = document.getElementById('btnNextStep');
 
+        if (!content1 || !content2 || !content3) return;
+
         content1.classList.add('hidden');
         content2.classList.add('hidden');
         content3.classList.add('hidden');
 
         if (this.currentStep === 1) {
-            badge.innerText = "Etapa 1 de 3";
-            title.innerText = "Detalhes do Produto";
+            if (badge) badge.innerText = "Etapa 1 de 3";
+            if (title) title.innerText = "Detalhes do Produto";
             content1.classList.remove('hidden');
-            btnPrev.classList.add('hidden');
-            btnNext.innerText = "Avançar para Ajuste (Etapa 2)";
+            if (btnPrev) btnPrev.classList.add('hidden');
+            if (btnNext) btnNext.innerText = "Avançar para Ajuste (Etapa 2)";
         } else if (this.currentStep === 2) {
-            badge.innerText = "Etapa 2 de 3";
-            title.innerText = "Quantidade e Operação";
+            if (badge) badge.innerText = "Etapa 2 de 3";
+            if (title) title.innerText = "Quantidade e Operação";
             content2.classList.remove('hidden');
-            document.getElementById('step2Image').src = this.activeProduct.image;
-            document.getElementById('step2Name').innerText = this.activeProduct.name;
-            document.getElementById('selectedQtyDisplay').innerText = this.selectedQuantity;
-            btnPrev.classList.remove('hidden');
-            btnNext.innerText = "Ir para Resumo (Etapa 3)";
+            const step2Img = document.getElementById('step2Image');
+            const step2Name = document.getElementById('step2Name');
+            const qtyDisp = document.getElementById('selectedQtyDisplay');
+            if (step2Img) step2Img.src = this.activeProduct.image;
+            if (step2Name) step2Name.innerText = this.activeProduct.name;
+            if (qtyDisp) qtyDisp.innerText = this.selectedQuantity;
+            if (btnPrev) btnPrev.classList.remove('hidden');
+            if (btnNext) btnNext.innerText = "Ir para Resumo (Etapa 3)";
         } else if (this.currentStep === 3) {
-            badge.innerText = "Etapa 3 de 3";
-            title.innerText = "Confirmação";
+            if (badge) badge.innerText = "Etapa 3 de 3";
+            if (title) title.innerText = "Confirmação";
             content3.classList.remove('hidden');
 
             const isBaixa = this.actionType === 'baixa';
@@ -380,14 +396,21 @@ class StockApp {
                 ? Math.max(0, this.activeProduct.stock - this.selectedQuantity)
                 : this.activeProduct.stock + this.selectedQuantity;
 
-            document.getElementById('summaryName').innerText = this.activeProduct.name;
-            document.getElementById('summaryAction').innerText = isBaixa ? "Dar Baixa (-)" : "Entrada (+)";
-            document.getElementById('summaryAction').className = isBaixa ? "font-bold text-rose-400" : "font-bold text-emerald-400";
-            document.getElementById('summaryQty').innerText = `${this.selectedQuantity} unidade(s)`;
-            document.getElementById('summaryNewStock').innerText = `${newStockCalculated} unidades`;
+            const sumName = document.getElementById('summaryName');
+            const sumAction = document.getElementById('summaryAction');
+            const sumQty = document.getElementById('summaryQty');
+            const sumNewStock = document.getElementById('summaryNewStock');
 
-            btnPrev.classList.remove('hidden');
-            btnNext.innerText = "Confirmar e Concluir";
+            if (sumName) sumName.innerText = this.activeProduct.name;
+            if (sumAction) {
+                sumAction.innerText = isBaixa ? "Dar Baixa (-)" : "Entrada (+)";
+                sumAction.className = isBaixa ? "font-bold text-rose-400" : "font-bold text-emerald-400";
+            }
+            if (sumQty) sumQty.innerText = `${this.selectedQuantity} unidade(s)`;
+            if (sumNewStock) sumNewStock.innerText = `${newStockCalculated} unidades`;
+
+            if (btnPrev) btnPrev.classList.remove('hidden');
+            if (btnNext) btnNext.innerText = "Confirmar e Concluir";
         }
     }
 
@@ -418,22 +441,31 @@ class StockApp {
 
     closeStepModal() {
         const modal = document.getElementById('stepModal');
-        modal.classList.remove('flex');
-        modal.classList.add('hidden');
+        if (modal) {
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
     }
 
-    // ADICIONAR / EDITAR PRODUTO
+    // ADICIONAR / EDITAR PRODUTO (BOTÃO BLINDADO CONTRA TRAVAMENTO)
     openAddProductModal() {
-        document.getElementById('editProductId').value = '';
-        document.getElementById('productModalTitle').innerText = 'Cadastrar Novo Produto';
-        document.getElementById('productForm').reset();
+        const editId = document.getElementById('editProductId');
+        const modalTitle = document.getElementById('productModalTitle');
+        const form = document.getElementById('productForm');
+        const imgPrev = document.getElementById('imagePreview');
+
+        if (editId) editId.value = '';
+        if (modalTitle) modalTitle.innerText = 'Cadastrar Novo Produto';
+        if (form) form.reset();
         this.tempImageFile = null;
-        document.getElementById('imagePreview').src = 'https://placehold.co/400x400/1e293b/94a3b8?text=Clique+p/+foto';
+        if (imgPrev) imgPrev.src = 'https://placehold.co/400x400/1e293b/94a3b8?text=Clique+p/+foto';
         
         this.populateCategorySelect('prodCategorySelect');
         const modal = document.getElementById('addProductModal');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
     }
 
     openEditProductModal(productId) {
@@ -447,13 +479,15 @@ class StockApp {
         document.getElementById('prodPrice').value = prod.price;
         document.getElementById('prodStock').value = prod.stock;
 
-        this.tempImageFile = prod.image; // mantém a URL atual se não trocar
+        this.tempImageFile = prod.image;
         document.getElementById('imagePreview').src = prod.image;
 
         this.populateCategorySelect('prodCategorySelect', prod.category);
         const modal = document.getElementById('addProductModal');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
     }
 
     populateCategorySelect(targetElementId, selectedCategory = '') {
@@ -467,75 +501,119 @@ class StockApp {
 
     closeAddModal() {
         const modal = document.getElementById('addProductModal');
-        modal.classList.remove('flex');
-        modal.classList.add('hidden');
+        if (modal) {
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
     }
 
     handleImageUpload(event) {
         const file = event.target.files[0];
         if (file) {
-            this.tempImageFile = file; // Salva o arquivo para enviar ao Storage ao salvar
+            this.tempImageFile = file;
             const reader = new FileReader();
             reader.onload = (e) => {
-                document.getElementById('imagePreview').src = e.target.result;
+                const prev = document.getElementById('imagePreview');
+                if (prev) prev.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
     }
 
     async saveProduct(e) {
-        e.preventDefault();
-        const editId = document.getElementById('editProductId').value;
-        const name = document.getElementById('prodName').value;
-        const code = document.getElementById('prodCode').value;
-        const price = parseFloat(document.getElementById('prodPrice').value);
-        const category = document.getElementById('prodCategorySelect').value;
-        const stock = parseInt(document.getElementById('prodStock').value);
-        
-        let productId = editId ? parseInt(editId) : Date.now();
-        
-        // Faz upload da nova imagem para o Storage se houver um arquivo novo
-        let imageUrl = typeof this.tempImageFile === 'string' ? this.tempImageFile : await this.uploadImageToStorage(this.tempImageFile, productId);
-        if (!imageUrl) imageUrl = 'https://placehold.co/400x400/1e293b/94a3b8?text=Sem+Foto';
+        if (e && typeof e.preventDefault === 'function') e.preventDefault();
 
-        if (editId) {
-            const index = this.products.findIndex(p => p.id === productId);
-            if (index !== -1) {
-                this.products[index] = {
-                    ...this.products[index],
-                    name, code, price, category, stock, image: imageUrl
-                };
-                await this.saveProductToDB(this.products[index]);
-            }
-        } else {
-            const newProd = {
-                id: productId,
-                name, code, price, category, stock, image: imageUrl
-            };
-            this.products.unshift(newProd);
-            await this.saveProductToDB(newProd);
+        // Encontra o botão de submit do formulário para destravá-lo caso ocorra algum imprevisto
+        const btnSubmit = document.querySelector('#productForm button[type="submit"]') || e?.submitter;
+        if (btnSubmit) {
+            btnSubmit.disabled = true;
+            btnSubmit.innerText = "A guardar...";
         }
 
-        this.renderCatalog();
-        this.closeAddModal();
+        try {
+            const editId = document.getElementById('editProductId').value;
+            const name = document.getElementById('prodName').value.trim();
+            const code = document.getElementById('prodCode').value.trim();
+            const price = parseFloat(document.getElementById('prodPrice').value) || 0;
+            const category = document.getElementById('prodCategorySelect').value;
+            const stock = parseInt(document.getElementById('prodStock').value) || 0;
+
+            if (!name || !code) {
+                alert('Preencha o nome e o código do produto.');
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerText = "Salvar Produto";
+                }
+                return;
+            }
+            
+            let productId = editId ? parseInt(editId) : Date.now();
+            
+            let imageUrl = 'https://placehold.co/400x400/1e293b/94a3b8?text=Sem+Foto';
+            if (this.tempImageFile) {
+                if (typeof this.tempImageFile === 'string') {
+                    imageUrl = this.tempImageFile;
+                } else {
+                    imageUrl = await this.uploadImageToStorage(this.tempImageFile, productId);
+                }
+            }
+
+            const productData = {
+                id: productId,
+                name,
+                code,
+                price,
+                category,
+                stock,
+                image: imageUrl
+            };
+
+            if (editId) {
+                const index = this.products.findIndex(p => p.id === productId);
+                if (index !== -1) {
+                    this.products[index] = productData;
+                }
+            } else {
+                this.products.unshift(productData);
+            }
+
+            await this.saveProductToDB(productData);
+            this.renderCatalog();
+            this.closeAddModal();
+
+        } catch (error) {
+            console.error("Erro ao salvar produto:", error);
+            alert("Ocorreu um erro ao salvar. Tente novamente.");
+        } finally {
+            if (btnSubmit) {
+                btnSubmit.disabled = false;
+                btnSubmit.innerText = "Salvar Produto";
+            }
+        }
     }
 
     // GERENCIADOR DE CATEGORIAS
     openCategoryListModal() {
         this.renderCategoriesListModal();
         const modal = document.getElementById('categoryModal');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
     }
 
     closeCategoryModal() {
         const modal = document.getElementById('categoryModal');
-        modal.classList.remove('flex');
-        modal.classList.add('hidden');
+        if (modal) {
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
     }
 
     renderCategoriesListModal() {
         const container = document.getElementById('categoryListContainer');
+        if (!container) return;
+
         container.innerHTML = this.categories.map(cat => `
             <div class="flex items-center justify-between bg-slate-900 border border-slate-700/80 px-3 py-2 rounded-xl">
                 <span class="font-medium text-slate-200">${cat}</span>
@@ -548,6 +626,7 @@ class StockApp {
 
     async addCategory() {
         const input = document.getElementById('newCategoryInput');
+        if (!input) return;
         const val = input.value.trim();
         if (val && !this.categories.includes(val)) {
             this.categories.push(val);
@@ -563,10 +642,12 @@ class StockApp {
         if (this.currentCategory === cat) this.currentCategory = 'todos';
         
         try {
-            const { doc, deleteDoc } = window.fbMethods;
-            await deleteDoc(doc(window.db, 'categories', cat));
+            if (window.db) {
+                const { doc, deleteDoc } = window.fbMethods;
+                await deleteDoc(doc(window.db, 'categories', cat));
+            }
         } catch (e) {
-            console.error("Erro ao apagar categoria do Firebase:", e);
+            console.error("Erro ao apagar categoria:", e);
         }
 
         this.renderCategories();
@@ -575,7 +656,7 @@ class StockApp {
     }
 }
 
-// Inicializar aplicação
+// Inicializar aplicação de forma segura
 let app;
 window.onload = () => {
     app = new StockApp();

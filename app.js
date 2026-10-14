@@ -24,19 +24,16 @@ class StockApp {
         this.renderCatalog();
     }
 
-    // Carregar dados do Firebase Firestore
     async loadFromFirebase() {
         try {
             if (!window.db) return;
             const { collection, getDocs } = window.fbMethods;
             
-            // Buscar Produtos
             const prodSnapshot = await getDocs(collection(window.db, 'products'));
             if (!prodSnapshot.empty) {
                 this.products = prodSnapshot.docs.map(doc => doc.data());
             }
 
-            // Buscar Categorias
             const catSnapshot = await getDocs(collection(window.db, 'categories'));
             if (!catSnapshot.empty) {
                 this.categories = catSnapshot.docs.map(doc => doc.data().name);
@@ -46,7 +43,6 @@ class StockApp {
         }
     }
 
-    // Salvar alteração de produto no Firestore
     async saveProductToDB(product) {
         try {
             if (!window.db) return;
@@ -57,7 +53,6 @@ class StockApp {
         }
     }
 
-    // Salvar categorias no Firestore
     async saveCategoriesToDB() {
         try {
             if (!window.db) return;
@@ -70,22 +65,17 @@ class StockApp {
         }
     }
 
-    // Upload de imagem diretamente para o Firebase Storage com fallback seguro
     async uploadImageToStorage(file, productId) {
         if (!file || typeof file === 'string') return file;
-        try {
-            if (!window.storage) return document.getElementById('imagePreview').src;
-            const { ref, uploadBytes, getDownloadURL } = window.fbMethods;
-            const imageRef = ref(window.storage, `products/${productId}_${Date.now()}.jpg`);
-            await uploadBytes(imageRef, file);
-            return await getDownloadURL(imageRef);
-        } catch (e) {
-            console.warn("Aviso no upload do Storage, usando pré-visualização:", e);
-            return document.getElementById('imagePreview').src;
-        }
+        
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = () => resolve('https://placehold.co/400x400/1e293b/94a3b8?text=Sem+Foto');
+            reader.readAsDataURL(file);
+        });
     }
 
-    // Categorias UI
     renderCategories() {
         const container = document.getElementById('categoryTabs');
         if (!container) return;
@@ -127,7 +117,6 @@ class StockApp {
         this.renderCatalog();
     }
 
-    // Renderizar Grade do Catálogo
     renderCatalog() {
         const grid = document.getElementById('catalogGrid');
         const emptyMsg = document.getElementById('emptyCatalogMessage');
@@ -187,7 +176,6 @@ class StockApp {
         }).join('');
     }
 
-    // IMPORTAÇÃO EM LOTE
     openBatchModal() {
         this.batchFiles = [];
         const badge = document.getElementById('batchCountBadge');
@@ -270,7 +258,6 @@ class StockApp {
         }
     }
 
-    // Excluir produto
     deleteProduct(event, productId) {
         if (event) event.stopPropagation();
         const prod = this.products.find(p => p.id === productId);
@@ -306,7 +293,6 @@ class StockApp {
         this.closeDeleteModal();
     }
 
-    // FLUXO DE 3 ETAPAS
     startStep1(productId) {
         this.activeProduct = this.products.find(p => p.id === productId);
         if (!this.activeProduct) return;
@@ -447,7 +433,6 @@ class StockApp {
         }
     }
 
-    // ADICIONAR / EDITAR PRODUTO (BOTÃO BLINDADO CONTRA TRAVAMENTO)
     openAddProductModal() {
         const editId = document.getElementById('editProductId');
         const modalTitle = document.getElementById('productModalTitle');
@@ -523,7 +508,6 @@ class StockApp {
     async saveProduct(e) {
         if (e && typeof e.preventDefault === 'function') e.preventDefault();
 
-        // Encontra o botão de submit do formulário para destravá-lo caso ocorra algum imprevisto
         const btnSubmit = document.querySelector('#productForm button[type="submit"]') || e?.submitter;
         if (btnSubmit) {
             btnSubmit.disabled = true;
@@ -551,11 +535,10 @@ class StockApp {
             
             let imageUrl = 'https://placehold.co/400x400/1e293b/94a3b8?text=Sem+Foto';
             if (this.tempImageFile) {
-                if (typeof this.tempImageFile === 'string') {
-                    imageUrl = this.tempImageFile;
-                } else {
-                    imageUrl = await this.uploadImageToStorage(this.tempImageFile, productId);
-                }
+                imageUrl = await this.uploadImageToStorage(this.tempImageFile, productId);
+            } else {
+                const imgPrev = document.getElementById('imagePreview');
+                if (imgPrev) imageUrl = imgPrev.src;
             }
 
             const productData = {
@@ -592,7 +575,6 @@ class StockApp {
         }
     }
 
-    // GERENCIADOR DE CATEGORIAS
     openCategoryListModal() {
         this.renderCategoriesListModal();
         const modal = document.getElementById('categoryModal');
@@ -656,7 +638,6 @@ class StockApp {
     }
 }
 
-// Inicializar aplicação de forma segura
 let app;
 window.onload = () => {
     app = new StockApp();
